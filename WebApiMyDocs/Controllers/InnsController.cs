@@ -14,48 +14,56 @@ using WebApiMyDocs.Services;
 namespace WebApiMyDocs.Controllers
 {
     [ApiController]
-    [Route("api/items")]
-    public class ItemsController : Controller
+    [Route("api/inns")]
+    public class InnsController : Controller
     {
         private readonly ApiDBContext _context;
 
-        public ItemsController(ApiDBContext context)
+        public InnsController(ApiDBContext context)
         {
             _context = context;
         }
 
-        //GET: itmes
+        //GET: Inns
         [HttpGet]
-        public async Task<ActionResult<EncryptedResponse>> GetItems([FromQuery] int userId, [FromQuery] string updateTimeString)
+        public async Task<ActionResult<EncryptedResponse>> GetInns([FromQuery] int userId, [FromQuery] string updateTimeString)
         {
             DateTime updateTime;
             DateTime.TryParse(updateTimeString, out updateTime);
-            List<Item> itemList = _context.Items.Where(i => i.UserId == userId && (i.UpdateTime > updateTime || i.UpdateTime == null)).ToList();
-            itemList.ForEach(item => item.Image64 = item.Image==null?null:Convert.ToBase64String(item.Image));
-            string json = JsonConvert.SerializeObject(itemList);
+            List<Item> items = _context.Items.Where(i => i.UserId == userId && (i.UpdateTime > updateTime || i.UpdateTime == null)).ToList();
+            List<Inn> Inns = items
+            .Join(_context.Inns,
+                item => item.Id,
+                Inn => Inn.Id,
+                (item, Inn) => Inn)
+            .Where(v => v.UpdateTime > updateTime || v.UpdateTime == null).ToList();
+            foreach (var value in Inns)
+            {
+                value.PhotoPage164 = value.PhotoPage1 == null ? null : Convert.ToBase64String(value.PhotoPage1);
+            }
+            string json = JsonConvert.SerializeObject(Inns);
             string encryptedData = CryptoService.EncryptData(json);
             return await Task.FromResult(Ok(new EncryptedResponse() { EncryptedData = encryptedData }));
         }
-        //POST items
+        //POST Inns
         [HttpPost]
-        public async Task<ActionResult<EncryptedResponse>> UpdateItems([FromBody] EncryptedResponse encrypted)
+        public async Task<ActionResult<EncryptedResponse>> UpdateInns([FromBody] EncryptedResponse encrypted)
         {
             try
             {
                 String encryptedData = encrypted.EncryptedData;
                 string decryptedData = CryptoService.DecryptData(encryptedData);
-                List<Item> items = JsonConvert.DeserializeObject<List<Item>>(decryptedData);
-                if (items.Count() == 0)
+                List<Inn> Inns = JsonConvert.DeserializeObject<List<Inn>>(decryptedData);
+                if (Inns.Count() == 0)
                     return await Task.FromResult(Ok(new EncryptedResponse() { EncryptedData = null }));
-                foreach (var item in items)
+                foreach (var value in Inns)
                 {
-                    item.Image = (string.IsNullOrEmpty(item.Image64)) ? null : Convert.FromBase64String(item.Image64);
-
-                    var itemdb = await _context.Items.FindAsync(item.Id);
-                    if (itemdb == null)
-                        _context.Add(item);
+                    value.PhotoPage1 = (string.IsNullOrEmpty(value.PhotoPage164) ? null : Convert.FromBase64String(value.PhotoPage164));
+                    var Inndb = await _context.Inns.FindAsync(value.Id);
+                    if (Inndb == null)
+                        _context.Add(value);
                     else
-                        _context.Entry(itemdb).CurrentValues.SetValues(item);
+                        _context.Entry(Inndb).CurrentValues.SetValues(value);
                 }
                 await _context.SaveChangesAsync();
                 string responseJson = JsonConvert.SerializeObject("Done");

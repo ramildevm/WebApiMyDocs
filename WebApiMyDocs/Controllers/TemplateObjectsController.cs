@@ -14,48 +14,51 @@ using WebApiMyDocs.Services;
 namespace WebApiMyDocs.Controllers
 {
     [ApiController]
-    [Route("api/items")]
-    public class ItemsController : Controller
+    [Route("api/templateobjects")]
+    public class TemplateObjectObjectsController : Controller
     {
         private readonly ApiDBContext _context;
 
-        public ItemsController(ApiDBContext context)
+        public TemplateObjectObjectsController(ApiDBContext context)
         {
             _context = context;
         }
 
-        //GET: itmes
+        //GET: TemplateObjects
         [HttpGet]
-        public async Task<ActionResult<EncryptedResponse>> GetItems([FromQuery] int userId, [FromQuery] string updateTimeString)
+        public async Task<ActionResult<EncryptedResponse>> GetTemplateObjects([FromQuery] int userId, [FromQuery] string updateTimeString)
         {
             DateTime updateTime;
             DateTime.TryParse(updateTimeString, out updateTime);
-            List<Item> itemList = _context.Items.Where(i => i.UserId == userId && (i.UpdateTime > updateTime || i.UpdateTime == null)).ToList();
-            itemList.ForEach(item => item.Image64 = item.Image==null?null:Convert.ToBase64String(item.Image));
-            string json = JsonConvert.SerializeObject(itemList);
+            List<Template> Templates = _context.Templates.Where(i => i.UserId == userId && (i.UpdateTime > updateTime || i.UpdateTime == null)).ToList();
+            List<TemplateObject> TemplateObjects = Templates
+           .Join(_context.TemplateObjects,
+               item => item.Id,
+               value => value.TemplateId,
+               (item, value) => value)
+           .Where(v => v.UpdateTime > updateTime || v.UpdateTime == null).ToList();
+            string json = JsonConvert.SerializeObject(TemplateObjects);
             string encryptedData = CryptoService.EncryptData(json);
             return await Task.FromResult(Ok(new EncryptedResponse() { EncryptedData = encryptedData }));
         }
-        //POST items
+        //POST TemplateObjects
         [HttpPost]
-        public async Task<ActionResult<EncryptedResponse>> UpdateItems([FromBody] EncryptedResponse encrypted)
+        public async Task<ActionResult<EncryptedResponse>> UpdateTemplateObjects([FromBody] EncryptedResponse encrypted)
         {
             try
             {
                 String encryptedData = encrypted.EncryptedData;
                 string decryptedData = CryptoService.DecryptData(encryptedData);
-                List<Item> items = JsonConvert.DeserializeObject<List<Item>>(decryptedData);
-                if (items.Count() == 0)
+                List<TemplateObject> TemplateObjects = JsonConvert.DeserializeObject<List<TemplateObject>>(decryptedData);
+                if (TemplateObjects.Count() == 0)
                     return await Task.FromResult(Ok(new EncryptedResponse() { EncryptedData = null }));
-                foreach (var item in items)
+                foreach (var value in TemplateObjects)
                 {
-                    item.Image = (string.IsNullOrEmpty(item.Image64)) ? null : Convert.FromBase64String(item.Image64);
-
-                    var itemdb = await _context.Items.FindAsync(item.Id);
-                    if (itemdb == null)
-                        _context.Add(item);
+                    var TemplateObjectdb = await _context.TemplateObjects.FindAsync(value.Id);
+                    if (TemplateObjectdb == null)
+                        _context.Add(value);
                     else
-                        _context.Entry(itemdb).CurrentValues.SetValues(item);
+                        _context.Entry(TemplateObjectdb).CurrentValues.SetValues(value);
                 }
                 await _context.SaveChangesAsync();
                 string responseJson = JsonConvert.SerializeObject("Done");

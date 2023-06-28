@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 
 #nullable disable
@@ -19,7 +20,9 @@ namespace WebApiMyDocs.Models
         public Guid TemplateId { get; set; }
         public DateTime? UpdateTime { get; set; }
 
+        [JsonIgnore]
         public virtual Template IdNavigation { get; set; }
+        [JsonIgnore]
         public virtual ICollection<TemplateDocumentDatum> TemplateDocumentData { get; set; }
     }
 }

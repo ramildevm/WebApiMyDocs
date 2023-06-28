@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 
 #nullable disable
@@ -15,8 +16,10 @@ namespace WebApiMyDocs.Models
         public string BirthPlace { get; set; }
         public DateTime? RegistrationDate { get; set; }
         public byte[] PhotoPage1 { get; set; }
+        public string PhotoPage164 { get; set; }
         public DateTime? UpdateTime { get; set; }
 
+        [JsonIgnore]
         public virtual Item IdNavigation { get; set; }
     }
 }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 
 #nullable disable
@@ -17,7 +18,9 @@ namespace WebApiMyDocs.Models
         public string Email { get; set; }
         public string Password { get; set; }
         public string Login { get; set; }
+        [JsonIgnore]
         public byte[] Photo { get; set; }
+        public string Photo64 { get; set; }
         public string AccessCode { get; set; }
         public DateTime? UpdateTime { get; set; }
 

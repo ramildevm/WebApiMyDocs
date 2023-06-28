@@ -14,48 +14,59 @@ using WebApiMyDocs.Services;
 namespace WebApiMyDocs.Controllers
 {
     [ApiController]
-    [Route("api/items")]
-    public class ItemsController : Controller
+    [Route("api/photos")]
+    public class PhotosController : Controller
     {
         private readonly ApiDBContext _context;
 
-        public ItemsController(ApiDBContext context)
+        public PhotosController(ApiDBContext context)
         {
             _context = context;
         }
-
-        //GET: itmes
+        
+        //GET: Photos
         [HttpGet]
-        public async Task<ActionResult<EncryptedResponse>> GetItems([FromQuery] int userId, [FromQuery] string updateTimeString)
+        public async Task<ActionResult<EncryptedResponse>> GetPhotos([FromQuery] int userId, [FromQuery] string updateTimeString)
         {
             DateTime updateTime;
             DateTime.TryParse(updateTimeString, out updateTime);
-            List<Item> itemList = _context.Items.Where(i => i.UserId == userId && (i.UpdateTime > updateTime || i.UpdateTime == null)).ToList();
-            itemList.ForEach(item => item.Image64 = item.Image==null?null:Convert.ToBase64String(item.Image));
-            string json = JsonConvert.SerializeObject(itemList);
+            List<Item> items = _context.Items.Where(i => i.UserId == userId && i.Type=="Collection" && (i.UpdateTime > updateTime || i.UpdateTime == null)).ToList();
+            List<Photo> Photos = new List<Photo>();
+            foreach(var item in items)
+            {
+                var photoList = _context.Photos.Where(p => p.CollectionId == item.Id && (p.UpdateTime > updateTime || p.UpdateTime == null)).ToList();
+                Console.WriteLine(photoList.Count.ToString());
+                foreach (var photo in photoList)
+                {
+
+                    Console.WriteLine(photo==null);
+                    photo.Image64 = photo.Image == null ? null : Convert.ToBase64String(photo.Image);
+                    Photos.Add(photo);
+                }
+            }
+            string json = JsonConvert.SerializeObject(Photos);
             string encryptedData = CryptoService.EncryptData(json);
             return await Task.FromResult(Ok(new EncryptedResponse() { EncryptedData = encryptedData }));
         }
-        //POST items
+        //POST Photos
         [HttpPost]
-        public async Task<ActionResult<EncryptedResponse>> UpdateItems([FromBody] EncryptedResponse encrypted)
+        public async Task<ActionResult<EncryptedResponse>> UpdatePhotos([FromBody] EncryptedResponse encrypted)
         {
             try
             {
                 String encryptedData = encrypted.EncryptedData;
                 string decryptedData = CryptoService.DecryptData(encryptedData);
-                List<Item> items = JsonConvert.DeserializeObject<List<Item>>(decryptedData);
-                if (items.Count() == 0)
+                List<Photo> Photos = JsonConvert.DeserializeObject<List<Photo>>(decryptedData);
+                if (Photos.Count() == 0)
                     return await Task.FromResult(Ok(new EncryptedResponse() { EncryptedData = null }));
-                foreach (var item in items)
+                foreach (var value in Photos)
                 {
-                    item.Image = (string.IsNullOrEmpty(item.Image64)) ? null : Convert.FromBase64String(item.Image64);
-
-                    var itemdb = await _context.Items.FindAsync(item.Id);
-                    if (itemdb == null)
-                        _context.Add(item);
+                    value.Image = (string.IsNullOrEmpty(value.Image64) ? null : Convert.FromBase64String(value.Image64));
+                    var Photodb = await _context.Photos.FindAsync(value.Id);
+                    if (Photodb == null)
+                        _context.Add(value);
                     else
-                        _context.Entry(itemdb).CurrentValues.SetValues(item);
+                        _context.Entry(Photodb).CurrentValues.SetValues(value);
                 }
                 await _context.SaveChangesAsync();
                 string responseJson = JsonConvert.SerializeObject("Done");

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
@@ -14,48 +13,56 @@ using WebApiMyDocs.Services;
 namespace WebApiMyDocs.Controllers
 {
     [ApiController]
-    [Route("api/items")]
-    public class ItemsController : Controller
+    [Route("api/creditcards")]
+    public class CreditCardsController : Controller
     {
         private readonly ApiDBContext _context;
 
-        public ItemsController(ApiDBContext context)
+        public CreditCardsController(ApiDBContext context)
         {
             _context = context;
         }
 
-        //GET: itmes
+        //GET: CreditCards
         [HttpGet]
-        public async Task<ActionResult<EncryptedResponse>> GetItems([FromQuery] int userId, [FromQuery] string updateTimeString)
+        public async Task<ActionResult<EncryptedResponse>> GetCreditCards([FromQuery] int userId, [FromQuery] string updateTimeString)
         {
             DateTime updateTime;
             DateTime.TryParse(updateTimeString, out updateTime);
-            List<Item> itemList = _context.Items.Where(i => i.UserId == userId && (i.UpdateTime > updateTime || i.UpdateTime == null)).ToList();
-            itemList.ForEach(item => item.Image64 = item.Image==null?null:Convert.ToBase64String(item.Image));
-            string json = JsonConvert.SerializeObject(itemList);
+            List<Item> items = _context.Items.Where(i => i.UserId == userId && (i.UpdateTime > updateTime || i.UpdateTime == null)).ToList();
+            List<CreditCard> CreditCards = items
+            .Join(_context.CreditCards,
+                item => item.Id,
+                CreditCard => CreditCard.Id,
+                (item, CreditCard) => CreditCard)
+            .Where(v => v.UpdateTime > updateTime || v.UpdateTime == null).ToList();
+            foreach (var value in CreditCards)
+            {
+                value.PhotoPage164 = value.PhotoPage1 == null ? null : Convert.ToBase64String(value.PhotoPage1);
+            }
+            string json = JsonConvert.SerializeObject(CreditCards);
             string encryptedData = CryptoService.EncryptData(json);
             return await Task.FromResult(Ok(new EncryptedResponse() { EncryptedData = encryptedData }));
         }
-        //POST items
+        //POST CreditCards
         [HttpPost]
-        public async Task<ActionResult<EncryptedResponse>> UpdateItems([FromBody] EncryptedResponse encrypted)
+        public async Task<ActionResult<EncryptedResponse>> UpdateCreditCards([FromBody] EncryptedResponse encrypted)
         {
             try
             {
                 String encryptedData = encrypted.EncryptedData;
                 string decryptedData = CryptoService.DecryptData(encryptedData);
-                List<Item> items = JsonConvert.DeserializeObject<List<Item>>(decryptedData);
-                if (items.Count() == 0)
+                List<CreditCard> CreditCards = JsonConvert.DeserializeObject<List<CreditCard>>(decryptedData);
+                if (CreditCards.Count() == 0)
                     return await Task.FromResult(Ok(new EncryptedResponse() { EncryptedData = null }));
-                foreach (var item in items)
+                foreach (var value in CreditCards)
                 {
-                    item.Image = (string.IsNullOrEmpty(item.Image64)) ? null : Convert.FromBase64String(item.Image64);
-
-                    var itemdb = await _context.Items.FindAsync(item.Id);
-                    if (itemdb == null)
-                        _context.Add(item);
+                    value.PhotoPage1 = (string.IsNullOrEmpty(value.PhotoPage164) ? null : Convert.FromBase64String(value.PhotoPage164));
+                    var CreditCarddb = await _context.CreditCards.FindAsync(value.Id);
+                    if (CreditCarddb == null)
+                        _context.Add(value);
                     else
-                        _context.Entry(itemdb).CurrentValues.SetValues(item);
+                        _context.Entry(CreditCarddb).CurrentValues.SetValues(value);
                 }
                 await _context.SaveChangesAsync();
                 string responseJson = JsonConvert.SerializeObject("Done");

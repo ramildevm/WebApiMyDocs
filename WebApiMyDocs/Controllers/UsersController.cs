@@ -22,15 +22,6 @@ namespace WebApiMyDocs.Controllers
         {
             _context = context;
         }
-        //GET: users
-        [HttpGet]
-        public async Task<ActionResult<EncryptedResponse>> GetUsers()
-        {
-            List<User> userList = _context.Users.ToList();
-            string json = JsonConvert.SerializeObject(userList);
-            string encryptedData = CryptoService.EncryptData(json);
-            return await Task.FromResult(Ok(new EncryptedResponse() { EncryptedData = encryptedData }));
-        }
 
         //GET: users/byemail
         [HttpGet]
@@ -42,6 +33,7 @@ namespace WebApiMyDocs.Controllers
                 User user = _context.Users.Where(u => u.Email == email && u.Password == password).FirstOrDefault();
                 if (user == null)
                     return await Task.FromResult(Conflict());
+                user.Photo64 = user.Photo == null ? null : Convert.ToBase64String(user.Photo);
                 string responseJson = JsonConvert.SerializeObject(user);
                 string encryptedResponseData = CryptoService.EncryptData(responseJson);
                 EncryptedResponse encryptedResponse = new EncryptedResponse
@@ -62,19 +54,21 @@ namespace WebApiMyDocs.Controllers
             try
             {
                 String encryptedData = encrypted.EncryptedData;
-                string decryptedData = CryptoService.DecryptData(encryptedData);
-                User user = JsonConvert.DeserializeObject<User>(decryptedData);
-                if (_context.Users.Count(u => u.Email == user.Email) > 0)
-                    return await Task.FromResult(Conflict());
-                await _context.AddAsync(user); ;
-                await _context.SaveChangesAsync();
-                string responseJson = JsonConvert.SerializeObject(_context.Users.Where(u => u.Email == user.Email).FirstOrDefaultAsync());
-                string encryptedResponseData = CryptoService.EncryptData(responseJson);
-                EncryptedResponse encryptedResponse = new EncryptedResponse
-                {
-                    EncryptedData = encryptedResponseData
-                };
-                return await Task.FromResult(Ok(encryptedResponse));
+            string decryptedData = CryptoService.DecryptData(encryptedData);
+            User user = JsonConvert.DeserializeObject<User>(decryptedData);
+            if (_context.Users.Count(u => u.Email == user.Email) > 0)
+                return await Task.FromResult(Conflict());
+
+            user.Photo = (string.IsNullOrEmpty(user.Photo64) ? null : Convert.FromBase64String(user.Photo64));
+            await _context.AddAsync(user); ;
+            await _context.SaveChangesAsync();
+            string responseJson = JsonConvert.SerializeObject(_context.Users.Where(u => u.Email == user.Email).FirstOrDefault());
+            string encryptedResponseData = CryptoService.EncryptData(responseJson);
+            EncryptedResponse encryptedResponse = new EncryptedResponse
+            {
+                EncryptedData = encryptedResponseData
+            };
+            return await Task.FromResult(Ok(encryptedResponse));
             }
             catch (Exception ex)
             {
@@ -99,9 +93,10 @@ namespace WebApiMyDocs.Controllers
                     return await Task.FromResult(Conflict());
                 existingUser.Login = updatedUser.Login;
                 existingUser.Password = updatedUser.Password;
-
+                existingUser.AccessCode = updatedUser.AccessCode;
+                existingUser.Photo = (string.IsNullOrEmpty(updatedUser.Photo64) ? null : Convert.FromBase64String(updatedUser.Photo64));
+                _context.Entry(existingUser).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
-
                 string responseJson = JsonConvert.SerializeObject(existingUser);
                 string encryptedResponseData = CryptoService.EncryptData(responseJson);
                 EncryptedResponse encryptedResponse = new EncryptedResponse
@@ -115,23 +110,6 @@ namespace WebApiMyDocs.Controllers
             {
                 return await Task.FromResult(StatusCode((int)HttpStatusCode.InternalServerError, ex.Message));
             }
-        }
-
-        //DELETE: users/{id}
-        public async Task<IActionResult> Delete(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-            var user = await _context.Users.FindAsync(id);
-            if (user == null)
-            {
-                return NotFound();
-            }
-            _context.Users.Remove(user);
-            await _context.SaveChangesAsync();
-            return NoContent();
         }
     }
 }
