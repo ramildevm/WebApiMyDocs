@@ -28,6 +28,7 @@ namespace WebApiMyDocs.Controllers
         [HttpGet]
         public async Task<ActionResult<EncryptedResponse>> GetPhotos([FromQuery] int userId, [FromQuery] string updateTimeString)
         {
+            MongoDBContext mongoDb = new MongoDBContext();
             DateTime updateTime;
             DateTime.TryParse(updateTimeString, out updateTime);
             List<Item> items = _context.Items.Where(i => i.UserId == userId && i.Type=="Collection" && (i.UpdateTime > updateTime || i.UpdateTime == null)).ToList();
@@ -35,12 +36,10 @@ namespace WebApiMyDocs.Controllers
             foreach(var item in items)
             {
                 var photoList = _context.Photos.Where(p => p.CollectionId == item.Id && (p.UpdateTime > updateTime || p.UpdateTime == null)).ToList();
-                Console.WriteLine(photoList.Count.ToString());
                 foreach (var photo in photoList)
                 {
+                    photo.Image = photo.Image == null ? null : mongoDb.GetBase64File(MongoDB.Bson.ObjectId.Parse(photo.Image));
 
-                    Console.WriteLine(photo==null);
-                    photo.Image64 = photo.Image == null ? null : Convert.ToBase64String(photo.Image);
                     Photos.Add(photo);
                 }
             }
@@ -54,6 +53,7 @@ namespace WebApiMyDocs.Controllers
         {
             try
             {
+                MongoDBContext mongoDb = new MongoDBContext();
                 String encryptedData = encrypted.EncryptedData;
                 string decryptedData = CryptoService.DecryptData(encryptedData);
                 List<Photo> Photos = JsonConvert.DeserializeObject<List<Photo>>(decryptedData);
@@ -61,8 +61,9 @@ namespace WebApiMyDocs.Controllers
                     return await Task.FromResult(Ok(new EncryptedResponse() { EncryptedData = null }));
                 foreach (var value in Photos)
                 {
-                    value.Image = (string.IsNullOrEmpty(value.Image64) ? null : Convert.FromBase64String(value.Image64));
                     var Photodb = await _context.Photos.FindAsync(value.Id);
+                    value.Image = mongoDb.SaveUpdateBase64File(value.Image, Photodb == null ? null : Photodb.Image, MongoDBContext.GenerateRandomFilename(value.Id)).ToString();
+
                     if (Photodb == null)
                         _context.Add(value);
                     else

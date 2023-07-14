@@ -50,7 +50,7 @@ namespace WebApiMyDocs.Models
 
                 entity.Property(e => e.Number).HasMaxLength(30);
 
-                entity.Property(e => e.PhotoPage1).HasColumnType("image");
+                entity.Property(e => e.PhotoPage1).HasMaxLength(250);
 
                 entity.Property(e => e.UpdateTime).HasColumnType("datetime");
 
@@ -81,7 +81,7 @@ namespace WebApiMyDocs.Models
 
                 entity.Property(e => e.Number).HasMaxLength(25);
 
-                entity.Property(e => e.PhotoPage1).HasColumnType("image");
+                entity.Property(e => e.PhotoPage1).HasMaxLength(250);
 
                 entity.Property(e => e.RegistrationDate).HasColumnType("datetime");
 
@@ -101,9 +101,7 @@ namespace WebApiMyDocs.Models
 
                 entity.Property(e => e.DateCreation).HasColumnType("datetime");
 
-                entity.Property(e => e.Image).HasColumnType("image");
-
-                entity.Ignore(e => e.Image64);
+                entity.Property(e => e.Image).HasMaxLength(250);
 
                 entity.Property(e => e.Title)
                     .IsRequired()
@@ -135,8 +133,7 @@ namespace WebApiMyDocs.Models
 
                 entity.Property(e => e.DivisionCode).HasMaxLength(255);
 
-                entity.Property(e => e.FacePhoto).HasColumnType("image");
-                entity.Ignore(e => e.FacePhoto64);
+                entity.Property(e => e.FacePhoto).HasMaxLength(250);
 
                 entity.Property(e => e.Fio)
                     .HasMaxLength(255)
@@ -149,12 +146,9 @@ namespace WebApiMyDocs.Models
 
                 entity.Property(e => e.GiveDate).HasColumnType("datetime");
 
-                entity.Property(e => e.PhotoPage1).HasColumnType("image");
+                entity.Property(e => e.PhotoPage1).HasMaxLength(250);
 
-                entity.Property(e => e.PhotoPage2).HasColumnType("image");
-
-                entity.Ignore(e => e.PhotoPage164);
-                entity.Ignore(e => e.PhotoPage264);
+                entity.Property(e => e.PhotoPage2).HasMaxLength(250);
 
                 entity.Property(e => e.ResidencePlace).HasMaxLength(255);
 
@@ -178,7 +172,7 @@ namespace WebApiMyDocs.Models
 
                 entity.Property(e => e.Image)
                     .IsRequired()
-                    .HasColumnType("image");
+                    .HasMaxLength(250);
 
                 entity.Property(e => e.UpdateTime).HasColumnType("datetime");
 
@@ -205,9 +199,9 @@ namespace WebApiMyDocs.Models
 
                 entity.Property(e => e.Number).HasMaxLength(50);
 
-                entity.Property(e => e.PhotoPage1).HasColumnType("image");
+                entity.Property(e => e.PhotoPage1).HasMaxLength(250);
 
-                entity.Property(e => e.PhotoPage2).HasColumnType("image");
+                entity.Property(e => e.PhotoPage2).HasMaxLength(250);
 
                 entity.Property(e => e.UpdateTime).HasColumnType("datetime");
 
@@ -240,7 +234,7 @@ namespace WebApiMyDocs.Models
 
                 entity.Property(e => e.Number).HasMaxLength(50);
 
-                entity.Property(e => e.PhotoPage1).HasColumnType("image");
+                entity.Property(e => e.PhotoPage1).HasMaxLength(250);
 
                 entity.Property(e => e.RegistrationDate).HasColumnType("datetime");
 

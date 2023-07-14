@@ -27,6 +27,7 @@ namespace WebApiMyDocs.Controllers
         [HttpGet]
         public async Task<ActionResult<EncryptedResponse>> GetCreditCards([FromQuery] int userId, [FromQuery] string updateTimeString)
         {
+            MongoDBContext mongoDb = new MongoDBContext();
             DateTime updateTime;
             DateTime.TryParse(updateTimeString, out updateTime);
             List<Item> items = _context.Items.Where(i => i.UserId == userId && (i.UpdateTime > updateTime || i.UpdateTime == null)).ToList();
@@ -38,7 +39,9 @@ namespace WebApiMyDocs.Controllers
             .Where(v => v.UpdateTime > updateTime || v.UpdateTime == null).ToList();
             foreach (var value in CreditCards)
             {
-                value.PhotoPage164 = value.PhotoPage1 == null ? null : Convert.ToBase64String(value.PhotoPage1);
+                if (value.PhotoPage1 == null)
+                    continue;
+                value.PhotoPage1 = mongoDb.GetBase64File(MongoDB.Bson.ObjectId.Parse( value.PhotoPage1));
             }
             string json = JsonConvert.SerializeObject(CreditCards);
             string encryptedData = CryptoService.EncryptData(json);
@@ -52,15 +55,17 @@ namespace WebApiMyDocs.Controllers
             {
                 String encryptedData = encrypted.EncryptedData;
                 string decryptedData = CryptoService.DecryptData(encryptedData);
+                MongoDBContext mongoDb = new MongoDBContext();
+
                 List<CreditCard> CreditCards = JsonConvert.DeserializeObject<List<CreditCard>>(decryptedData);
                 if (CreditCards.Count() == 0)
                     return await Task.FromResult(Ok(new EncryptedResponse() { EncryptedData = null }));
                 foreach (var value in CreditCards)
                 {
-                    value.PhotoPage1 = (string.IsNullOrEmpty(value.PhotoPage164) ? null : Convert.FromBase64String(value.PhotoPage164));
-                    var CreditCarddb = await _context.CreditCards.FindAsync(value.Id);
-                    if (CreditCarddb == null)
-                        _context.Add(value);
+                    var CreditCarddb = await _context.CreditCards.FindAsync(value.Id);                
+                    value.PhotoPage1 = mongoDb.SaveUpdateBase64File(value.PhotoPage1, CreditCarddb==null?null:CreditCarddb.PhotoPage1, MongoDBContext.GenerateRandomFilename(value.Id)).ToString();
+                    if (CreditCarddb == null)                    
+                        _context.Add(value);                    
                     else
                         _context.Entry(CreditCarddb).CurrentValues.SetValues(value);
                 }

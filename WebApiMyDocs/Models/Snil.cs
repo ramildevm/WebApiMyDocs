@@ -15,8 +15,8 @@ namespace WebApiMyDocs.Models
         public DateTime? BirthDate { get; set; }
         public string BirthPlace { get; set; }
         public DateTime? RegistrationDate { get; set; }
-        public byte[] PhotoPage1 { get; set; }
-        public string PhotoPage164 { get; set; }
+        [JsonProperty("PhotoPage164")]
+        public string PhotoPage1 { get; set; }
         public DateTime? UpdateTime { get; set; }
 
         [JsonIgnore]

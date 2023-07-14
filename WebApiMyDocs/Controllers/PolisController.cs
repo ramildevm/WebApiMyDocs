@@ -28,6 +28,7 @@ namespace WebApiMyDocs.Controllers
         [HttpGet]
         public async Task<ActionResult<EncryptedResponse>> GetPolis([FromQuery] int userId, [FromQuery] string updateTimeString)
         {
+            MongoDBContext mongoDb = new MongoDBContext();
             DateTime updateTime;
             DateTime.TryParse(updateTimeString, out updateTime);
             List<Item> items = _context.Items.Where(i => i.UserId == userId && (i.UpdateTime > updateTime || i.UpdateTime == null)).ToList();
@@ -39,8 +40,8 @@ namespace WebApiMyDocs.Controllers
             .Where(v => v.UpdateTime > updateTime || v.UpdateTime == null).ToList();
             foreach (var value in Polis)
             {
-                value.PhotoPage164 = value.PhotoPage1 == null ? null : Convert.ToBase64String(value.PhotoPage1);
-                value.PhotoPage264 = value.PhotoPage2 == null ? null : Convert.ToBase64String(value.PhotoPage2);
+                value.PhotoPage1 = value.PhotoPage1 == null ? null : mongoDb.GetBase64File(MongoDB.Bson.ObjectId.Parse(value.PhotoPage1));
+                value.PhotoPage2 = value.PhotoPage2 == null ? null : mongoDb.GetBase64File(MongoDB.Bson.ObjectId.Parse(value.PhotoPage2));
             }
             string json = JsonConvert.SerializeObject(Polis);
             string encryptedData = CryptoService.EncryptData(json);
@@ -52,6 +53,7 @@ namespace WebApiMyDocs.Controllers
         {
             try
             {
+                MongoDBContext mongoDb = new MongoDBContext();
                 String encryptedData = encrypted.EncryptedData;
                 string decryptedData = CryptoService.DecryptData(encryptedData);
                 List<Poli> Polis = JsonConvert.DeserializeObject<List<Poli>>(decryptedData);
@@ -59,9 +61,10 @@ namespace WebApiMyDocs.Controllers
                     return await Task.FromResult(Ok(new EncryptedResponse() { EncryptedData = null }));
                 foreach (var value in Polis)
                 {
-                    value.PhotoPage1 = (string.IsNullOrEmpty(value.PhotoPage164) ? null : Convert.FromBase64String(value.PhotoPage164));
-                    value.PhotoPage2 = (string.IsNullOrEmpty(value.PhotoPage264) ? null : Convert.FromBase64String(value.PhotoPage264));
                     var Polidb = await _context.Polis.FindAsync(value.Id);
+                    value.PhotoPage1 = mongoDb.SaveUpdateBase64File(value.PhotoPage1, Polidb == null ? null : Polidb.PhotoPage1, MongoDBContext.GenerateRandomFilename(value.Id)).ToString();
+                    value.PhotoPage2 = mongoDb.SaveUpdateBase64File(value.PhotoPage2, Polidb == null ? null : Polidb.PhotoPage2, MongoDBContext.GenerateRandomFilename(value.Id)).ToString();
+
                     if (Polidb == null)
                         _context.Add(value);
                     else

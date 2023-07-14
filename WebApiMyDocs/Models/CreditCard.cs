@@ -13,8 +13,8 @@ namespace WebApiMyDocs.Models
         public string Fio { get; set; }
         public string ExpiryDate { get; set; }
         public int? Cvv { get; set; }
-        public byte[] PhotoPage1 { get; set; }
-        public string PhotoPage164 { get; set; }
+        [JsonProperty("PhotoPage164")]
+        public string PhotoPage1 { get; set; }
         public DateTime? UpdateTime { get; set; }
 
         [JsonIgnore]

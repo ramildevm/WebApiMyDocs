@@ -28,10 +28,18 @@ namespace WebApiMyDocs.Controllers
         [HttpGet]
         public async Task<ActionResult<EncryptedResponse>> GetItems([FromQuery] int userId, [FromQuery] string updateTimeString)
         {
+            MongoDBContext mongoDb = new MongoDBContext();
             DateTime updateTime;
             DateTime.TryParse(updateTimeString, out updateTime);
             List<Item> itemList = _context.Items.Where(i => i.UserId == userId && (i.UpdateTime > updateTime || i.UpdateTime == null)).ToList();
-            itemList.ForEach(item => item.Image64 = item.Image==null?null:Convert.ToBase64String(item.Image));
+
+            foreach(var value in itemList)
+            {
+                if (value.Image == null)
+                    continue;
+                value.Image = mongoDb.GetBase64File(MongoDB.Bson.ObjectId.Parse(value.Image));
+            }
+
             string json = JsonConvert.SerializeObject(itemList);
             string encryptedData = CryptoService.EncryptData(json);
             return await Task.FromResult(Ok(new EncryptedResponse() { EncryptedData = encryptedData }));
@@ -44,14 +52,16 @@ namespace WebApiMyDocs.Controllers
             {
                 String encryptedData = encrypted.EncryptedData;
                 string decryptedData = CryptoService.DecryptData(encryptedData);
+                MongoDBContext mongoDb = new MongoDBContext();
                 List<Item> items = JsonConvert.DeserializeObject<List<Item>>(decryptedData);
                 if (items.Count() == 0)
                     return await Task.FromResult(Ok(new EncryptedResponse() { EncryptedData = null }));
                 foreach (var item in items)
                 {
-                    item.Image = (string.IsNullOrEmpty(item.Image64)) ? null : Convert.FromBase64String(item.Image64);
 
                     var itemdb = await _context.Items.FindAsync(item.Id);
+                    item.Image = mongoDb.SaveUpdateBase64File(item.Image, itemdb == null ? null : itemdb.Image, MongoDBContext.GenerateRandomFilename(item.Id)).ToString();
+
                     if (itemdb == null)
                         _context.Add(item);
                     else

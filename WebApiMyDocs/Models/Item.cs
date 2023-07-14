@@ -16,9 +16,8 @@ namespace WebApiMyDocs.Models
         public Guid Id { get; set; }
         public string Title { get; set; }
         public string Type { get; set; }
-        [JsonIgnore]
-        public byte[] Image { get; set; }
-        public string Image64 { get; set; }
+        [JsonProperty("Image64")]
+        public string Image { get; set; }
         public int Priority { get; set; }
         public int IsHidden { get; set; }
         public DateTime DateCreation { get; set; }

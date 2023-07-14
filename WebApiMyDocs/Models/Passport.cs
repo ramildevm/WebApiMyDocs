@@ -18,12 +18,12 @@ namespace WebApiMyDocs.Models
         public string ByWhom { get; set; }
         public string DivisionCode { get; set; }
         public DateTime? GiveDate { get; set; }
-        public byte[] FacePhoto { get; set; }
-        public byte[] PhotoPage1 { get; set; }
-        public byte[] PhotoPage2 { get; set; }
-        public string FacePhoto64 { get; set; }
-        public string PhotoPage164 { get; set; }
-        public string PhotoPage264 { get; set; }
+        [JsonProperty("FacePhoto64")]
+        public string FacePhoto { get; set; }
+        [JsonProperty("PhotoPage164")]
+        public string PhotoPage1 { get; set; }
+        [JsonProperty("PhotoPage264")]
+        public string PhotoPage2 { get; set; }
         public DateTime? UpdateTime { get; set; }
         [JsonIgnore]
         public virtual Item IdNavigation { get; set; }

@@ -28,6 +28,7 @@ namespace WebApiMyDocs.Controllers
         [HttpGet]
         public async Task<ActionResult<EncryptedResponse>> GetInns([FromQuery] int userId, [FromQuery] string updateTimeString)
         {
+            MongoDBContext mongoDb = new MongoDBContext();
             DateTime updateTime;
             DateTime.TryParse(updateTimeString, out updateTime);
             List<Item> items = _context.Items.Where(i => i.UserId == userId && (i.UpdateTime > updateTime || i.UpdateTime == null)).ToList();
@@ -39,7 +40,7 @@ namespace WebApiMyDocs.Controllers
             .Where(v => v.UpdateTime > updateTime || v.UpdateTime == null).ToList();
             foreach (var value in Inns)
             {
-                value.PhotoPage164 = value.PhotoPage1 == null ? null : Convert.ToBase64String(value.PhotoPage1);
+                value.PhotoPage1 = value.PhotoPage1 == null ? null : mongoDb.GetBase64File(MongoDB.Bson.ObjectId.Parse(value.PhotoPage1));
             }
             string json = JsonConvert.SerializeObject(Inns);
             string encryptedData = CryptoService.EncryptData(json);
@@ -51,6 +52,7 @@ namespace WebApiMyDocs.Controllers
         {
             try
             {
+                MongoDBContext mongoDb = new MongoDBContext();
                 String encryptedData = encrypted.EncryptedData;
                 string decryptedData = CryptoService.DecryptData(encryptedData);
                 List<Inn> Inns = JsonConvert.DeserializeObject<List<Inn>>(decryptedData);
@@ -58,8 +60,9 @@ namespace WebApiMyDocs.Controllers
                     return await Task.FromResult(Ok(new EncryptedResponse() { EncryptedData = null }));
                 foreach (var value in Inns)
                 {
-                    value.PhotoPage1 = (string.IsNullOrEmpty(value.PhotoPage164) ? null : Convert.FromBase64String(value.PhotoPage164));
                     var Inndb = await _context.Inns.FindAsync(value.Id);
+                    value.PhotoPage1 = mongoDb.SaveUpdateBase64File(value.PhotoPage1, Inndb == null ? null : Inndb.PhotoPage1, MongoDBContext.GenerateRandomFilename(value.Id)).ToString();
+
                     if (Inndb == null)
                         _context.Add(value);
                     else

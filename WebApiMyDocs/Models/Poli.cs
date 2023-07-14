@@ -13,10 +13,10 @@ namespace WebApiMyDocs.Models
         public string Fio { get; set; }
         public string Gender { get; set; }
         public DateTime? BirthDate { get; set; }
-        public byte[] PhotoPage1 { get; set; }
-        public byte[] PhotoPage2 { get; set; }
-        public string PhotoPage164 { get; set; }
-        public string PhotoPage264 { get; set; }
+        [JsonProperty("PhotoPage164")]
+        public string PhotoPage1 { get; set; }
+        [JsonProperty("PhotoPage264")]
+        public string PhotoPage2 { get; set; }
         public string ValidUntil { get; set; }
         public DateTime? UpdateTime { get; set; }
 
